@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+svg {
+    border: 1px solid #000000;
+}
+
+.map path {
+  fill: white;
+  stroke: black;
+  stroke-width: 0.5;
+}
+
+#step-buttons {
+  width: 800px;
+  text-align: right;
+}
+</style>
+<body>
+<div class="map"></div>
+<div id="step-buttons">
+  <button id="step-prev-year">←</button>
+  <span id="year-label">1920</span>
+  <button id="step-next-year">→</button>
+</div>
+<p>GIS DATA: <a href="http://nlftp.mlit.go.jp/" target="_BLANK">nlftp.mlit.go.jp</a></p>
+<p>NOTE: Isolated islands of Tokyo Metropolis don't show up on the window above.</p>
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-geo-projection/2.1.0/d3-geo-projection.min.js"></script>
+<script>
+  var svgWidth = 800,
+          svgHeight = 450,
+          earthSize = 280;
+
+  var canvas = d3.select(".map")
+          .append("svg")
+          .attr("width", svgWidth)
+          .attr("height", svgHeight)
+
+  var jsonFiles = [
+    "data/tokyo/tokyo1920.json",
+    "data/tokyo/tokyo1950_m.json",
+    "data/tokyo/tokyo1955_m.json",
+    "data/tokyo/tokyo1960_m.json",
+    "data/tokyo/tokyo1965_m.json",
+    "data/tokyo/tokyo1970.json",
+    "data/tokyo/tokyo1975.json",
+    "data/tokyo/tokyo1980.json",
+    "data/tokyo/tokyo1985.json",
+    "data/tokyo/tokyo1995.json",
+    "data/tokyo/tokyo2000.json",
+    "data/tokyo/tokyo2005_m.json",
+    "data/tokyo/tokyo2011_m.json",
+    "data/tokyo/tokyo2016_m.json"];
+  
+  var geoDatas = [];
+
+  var jsonIndex = 0;
+  function loadJsonFiles() {
+    d3.json(jsonFiles[jsonIndex], function (error, data) {
+      geoDatas[jsonIndex] = data;
+      jsonIndex++;
+      if (jsonIndex < jsonFiles.length) {
+        loadJsonFiles();
+      }
+    })
+  }
+  loadJsonFiles();
+
+  var tokyo = canvas.append("g")
+          .attr("id", "tokyo")
+
+  var cityLabel = canvas.append("text")
+          .attr("id", "city-label")
+          .attr("x", "520")
+          .attr("y", "420")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+
+  var jsonLabel = canvas.append("text")
+          .attr("id", "json-label")
+          .attr("x", "640")
+          .attr("y", "20")
+          .attr("font-family", "sans-serif")
+          .attr("color", "grey")
+          .attr("font-size", "10px")
+
+  // step current year
+  var currentIndex = 0;
+  document.getElementById("step-prev-year").addEventListener("click", function () {
+    currentIndex--;
+    if (0 > currentIndex) {
+      currentIndex = jsonFiles.length - 1;
+    }
+    updateMap();
+  },false);
+  
+  document.getElementById("step-next-year").addEventListener("click", function () {
+    currentIndex++;
+    updateMap();
+  },false);
+
+  updateMap();
+  var selectedCity = "_";
+  function updateMap() {
+    var data = geoDatas[currentIndex];
+    if (!data) {
+      currentIndex = 0;
+      setTimeout(function () {
+        updateMap();
+      }, 500);
+      return;
+    }
+    //"data/tokyo/tokyo1920_m.json"
+    var src = jsonFiles[currentIndex];
+    jsonLabel.text(src);
+    var yearStr = "";
+    yearStr = src.replace(/[\/\.\_a-z]/g, "");
+    document.getElementById("year-label").innerHTML= "西暦" + yearStr + "年";
+
+    var mercator = d3.geo.mercator()
+            //.center(d3.geo.centroid(data))
+            .center([139.45, 35.68])
+            .translate([svgWidth / 2, svgHeight / 2])
+            .scale(40000)
+
+    //var projection = d3.geo.conicEquidistantJapan();
+
+    var path = d3.geo.path()
+            .projection(mercator)
+
+    // add
+    var cities = tokyo.selectAll("path")
+            .data(data.features)
+
+    // new
+    cities.enter()
+            .append("path")
+            .attr("d", path)
+            .style("fill", function (d, i) {
+              return "#aca";
+              //console.log('new:'+i);
+              //return "hsl(" + i + ", 80%, 60%)";
+            })
+
+    // remove
+    cities.exit().remove();
+
+    // update
+    cities.attr("d", path)
+            .style("fill", function (d, i) {
+              if (cityExists(d)) {
+                label = getCityName(d);
+                cityLabel.text(label);
+                return "blue";
+              }
+              return "#aca";
+            })
+            .on("mouseover", function (d, i) {
+              var label = "";
+              label = getCityName(d);
+              cityLabel.text(label);
+
+              if(!cityExists(d)){
+                d3.select(this)
+                      .transition()
+                      .style("fill", "hsl(" + i + ", 80%, 60%)")
+              }
+            }).on("mouseout", function (d, i) {
+              if(!cityExists(d)){
+                d3.select(this)
+                      .transition()
+                      .delay(500)
+                      .duration(1500)
+                      .style("fill", "#aca");
+              }
+            }).on("click", function (d, i) {
+              selectedCity = d.properties["N03_004"];
+              if (!selectedCity) {
+                selectedCity = d.properties["N03_003"];
+              }
+              updateMap();
+            })
+            .transition()
+            .duration(1500)
+  }
+  function getCityName(d) {
+    var label = "";
+    if (d.properties["N03_003"]) {
+      label += d.properties["N03_003"];
+    }
+    if (d.properties["N03_004"]) {
+      label += d.properties["N03_004"];
+    }
+    if (d.properties["N03_007"]) {
+      label += "[" + d.properties["N03_007"] + "]";
+    }
+    return label;
+  }
+
+  function cityExists(d, targetCity) {
+    var city = d.properties["N03_004"];
+    if (!city) {
+      city = d.properties["N03_003"];
+    }
+    if (typeof targetCity === "undefined"){
+      targetCity = selectedCity;
+    }
+    
+    var cityExists = false;
+    //
+    if (targetCity === city) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("村", "区")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("村", "市")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("村", "町")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("市", "区")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("市", "町")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("市", "村")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("町", "区")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("町", "市")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("町", "村")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("区", "市")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("区", "町")) {
+      cityExists = true;
+    }
+    if (targetCity === city.replace("区", "村")) {
+      cityExists = true;
+    }
+    return cityExists;
+  }
+</script>
+</body>
+</html>
