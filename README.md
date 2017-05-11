@@ -8,7 +8,7 @@ Generational changes in administrative divisions of Tokyo Metropolitan between 1
 
 ## NOTE
 
-Tokyo has numerous outlying islands, but they don't show up.
+Tokyo has numerous outlying islands, but they don't show up on the canvas.
 
 ## GIS DATA
 
