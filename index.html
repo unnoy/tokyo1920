@@ -120,7 +120,8 @@ svg {
     var src = jsonFiles[currentIndex];
     jsonLabel.text(src);
     var yearStr = "";
-    yearStr = src.replace(/[\/\.\_a-z]/g, "");
+    //yearStr = src.replace(/[\/\.\_a-z]/g, "");
+    yearStr = src.substr(src.match(/\d+\_?m?\.json$/).index,4);
     document.getElementById("year-label").innerHTML= "西暦" + yearStr + "年";
 
     var mercator = d3.geo.mercator()
