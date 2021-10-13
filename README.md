@@ -14,6 +14,10 @@ Tokyo has numerous outlying islands, but they don't show up on the canvas.
 
 [Ministry of Land, Infrastructure, Transport and Tourism](http://www.mlit.go.jp/)
 
+## DEMO
+
+[bl.ocks.org](http://bl.ocks.org/unnoy/2dd6a09c50ffc85930bcd8dd2b7e9e81)
+
 ## LICENSE
 
 MIT
